@@ -4,15 +4,18 @@
 #include <sstream>
 #include <algorithm>
 #include "arvorebplus.cpp"
+#include "buffer.cpp"
+int main() {
+    fstream indexFile("index.txt", ios::in | ios::out);
+    fstream dataFile("vinhos.csv", ios::in | ios::out);
+    
+    BufferManager buffer(indexFile, dataFile);
+    //BTree arvore(buffer, 2); 
 
-int main(){
-    //inicializando o buffer
-    Node* buffer[2]; // buffer[0] -> para o arquivo csv; buffer[1] -> para a árvore (especificação do trabalho)
-    //abre o leitor de arquivos!
-    //le a primeira linha 
-    //passa pro buffer
-    //tenta inserir ela na árvore
-    //antes de chamar a função para inserir, bota o primeiro 
-
+    // Processamento de operações
+    ifstream input("in.txt");
+    ofstream output("out.txt");
+    
+    string line;
 
 }
