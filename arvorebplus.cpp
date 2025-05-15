@@ -109,8 +109,8 @@ class BTree {
         if (folha->pai->n == 2*this->grau + 1){
             splitNode(folha->pai);
         }
-        folha->pai->chaves.insert(folha->pai->chaves.begin() + indice, novaFolha->chaves[0]);
-        folha->pai->filhos.insert(folha->pai->filhos.begin() + indice + 1, novaFolha);
+        folha->pai->chaves.insert(folha->pai->chaves.begin() + indice, novaFolha->chaves[0]); // isso daqui eh só uma parada com iterator. 
+        folha->pai->filhos.insert(folha->pai->filhos.begin() + indice + 1, novaFolha); // fazer isso insere o valor sem substituir ninguém, dando um push no vetor
         folha->pai->n++;
 
     }
