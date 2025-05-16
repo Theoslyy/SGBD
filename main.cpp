@@ -10,7 +10,7 @@ using namespace std;
 int main() {
     std::ifstream input("in.txt");
     std::ofstream output("out.txt");
-    std::fstream indexFile("index.txt", std::ios::in | std::ios::out | std::ios::trunc); // Use trunc to clear file
+    std::fstream indexFile("index.txt", std::ios::in | std::ios::out | std::ios::trunc);
     
     std::string line;
     getline(input, line);
