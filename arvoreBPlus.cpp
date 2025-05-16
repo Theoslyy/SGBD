@@ -90,7 +90,7 @@ class BTree {
         : grau(grau), indexFile(indexFile), dataFile(dataFile), indexBuffer(nullptr), indexDirty(false), rootID(-1) {
         indexFile.seekg(0, ios::end);
         if (indexFile.tellg() == 0) {
-            // Create new root node
+        
             Node root(true);
             root.id = 0;
             rootID = root.id;
@@ -98,7 +98,7 @@ class BTree {
             indexFile << root.serialize() << endl;
             indexFile.flush();
         } else {
-            // Load existing nodes (stub)
+            
             indexFile.seekg(0);
             string line;
             while (getline(indexFile, line)) {
