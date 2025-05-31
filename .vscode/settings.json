@@ -3,6 +3,8 @@
         ".als.json": "jsonc",
         "iosfwd": "cpp",
         "algorithm": "cpp",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "sstream": "cpp",
+        "stdexcept": "cpp"
     }
 }
