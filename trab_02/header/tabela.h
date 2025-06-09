@@ -1,8 +1,8 @@
 #ifndef TABELA_H
 #define TABELA_H
 
-#include <pagina.h>
-#include <tupla.h>
+#include "pagina.h"
+#include "tupla.h"
 #include <vector>
 
 using namespace std;

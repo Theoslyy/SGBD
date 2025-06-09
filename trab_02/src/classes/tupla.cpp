@@ -1,4 +1,4 @@
-#include "tupla.h"
+#include "../../header/tupla.h"
 #include <stdexcept>
 using namespace std;
 

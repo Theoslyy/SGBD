@@ -7,7 +7,6 @@ using namespace std;
 
 class Tupla{
     public:
-
         vector<string> linha;
         int qnt_cols;
         Tupla();
