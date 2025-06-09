@@ -1,6 +1,6 @@
 #ifndef PAGINA_H
 #define PAGINA_H
-#include <tupla.h> 
+#include "tupla.h" 
 #include <array>
 
 using namespace std;
@@ -15,5 +15,6 @@ class Pagina {
         Tupla getTupla(int posicao);
         void setTupla(int posicao, Tupla tupla);
         bool isFull();
+        void addTupla(Tupla tupla);
 };
 #endif
