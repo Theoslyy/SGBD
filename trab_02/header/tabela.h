@@ -16,7 +16,7 @@ class Tabela {
 
         Tabela(string nome_tabela, int qnt_cols);
         void adicionarPagina( Pagina& pagina);
-        Pagina getPagina(int indice);
+        Pagina& getPagina(int indice);
         int getQuantidadePaginas();
 };
 

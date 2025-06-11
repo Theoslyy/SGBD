@@ -11,71 +11,77 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-const int B = 4; // número de buffers disponíveis
 const int TUPLAS_PAG = 10;
+const int MAX_PAG = 4; //é o B
+const int MAX_TUPLA = 10;
+const int MAX_BUFFER = MAX_PAG * MAX_TUPLA; // 40 tuplas
+int page_reads = 0;
+int page_writes = 0;
 
 
 // Ordena e salva uma run no disco
-void sort_run(vector<string>& run, int run_id) {
+void sort_run(vector<Tupla>& run, int run_id) {
     //aqui, o vetor de strings run é o vetor com as 40 tuplas que queremos ordenar no momento
-    vector<string> sorted = run;
+    vector<Tupla> sorted = run;
     //explicando esse sort embaixo:
     /*
     O sort é uma função do C++ do formato:
     sort(inicio, fim, função_de_comparação)
-    nesse caso, nossa função de comparação é: 
+    função de comparação genérica: 
     [](const string& a, const string& b) {
     return a < b;
     }
-    Isso está errado!
-    O que precisamos fazer é:
-    Temos cada tupla como uma string no vetor de run, 
-    queremos acessar, nessa string, somente o valor correspondente à coluna de ordenação
-    ou seja, se a nossa tupla estiver assim:
-    0, sauvignon blanc, branco, 1974, 0 
-    e queremos ordenar pelo id da uva, temos que pegar o primeiro valor antes da primeira vírgula
-    pois é o que corresponde à primeira coluna que é a coluna de uva_id
-    Ou seja, realmente a e b serão strings, (a e b são valores consecutivos na entrada)
-    O Que precisamos é basicamente fazer um:
-    int colA = stoi(a.substr(0, a.find(',')));
-    int colB = stoi(b.substr(0, b.find(',')));
-    return colA < colB;
-    ou seja, pegamos o primeiro valor antes da vírgula (que corresponde à primeira coluna) e o convertemos em inteiro,
-    pois estamos comparando um inteiro!
     */
-
-
     sort(sorted.begin(), sorted.end(), [](const string& a, const string& b) {
-        return a < b; // pega a posição da tupla que corresponde ao índice primário e compara. 
+        int colA = stoi(a.substr(0, a.find(',')));
+        int colB = stoi(b.substr(0, b.find(',')));
+        return colA < colB; // pega a posição da tupla que corresponde ao índice primário e compara. 
     });
+    int tuplas_total = 0;
     //gravamos o output num .txt
     ofstream out("run_" + to_string(run_id) + ".txt");
-    for (const auto& r : sorted)
-        out << r << "\n";
+    for (auto& r : sorted){
+        const vector<string>& linha = r.getLinha();
+        for (size_t i = 0; i < linha.size(); ++i) {
+            out << linha[i];
+            if (i < linha.size() - 1) out << ","; // comma between values
+        }
+        out << "\n";
+        tuplas_total++; 
+    }
     out.close();
+    int paginas_escritas = (tuplas_total + TUPLAS_PAG - 1) / TUPLAS_PAG;
+    page_writes += paginas_escritas;
 }
 
 // Lê tuplas do arquivo até o limite de memória. Cada página só tem 10 tuplas e o javam não impôs limite
 // Logo, podemos ler todas as tuplas sem problema. O max_count é desnecessário
-vector<string> read_Tuplas(ifstream& in, int max_count) {
-    vector<string> tpls;
-    string linha; 
-    while (tpls.size() < max_count && getline(in, linha)) {
-        tpls.push_back(linha);
+vector<Tupla> read_buffer(Tabela* tabela, int start_page, int& next_page) {
+    vector<Tupla> buffer;
+    int paginas_lidas = 0;
+    int i = start_page;
+
+    while (i < tabela->qnt_pags && paginas_lidas < MAX_PAG) {
+        Pagina& p = tabela->getPagina(i);
+        for (int j = 0; j < p.qnt_tuplas_ocupadas; ++j) {
+            buffer.push_back(p.getTupla(j));
+        }
+        paginas_lidas++;
+        page_reads++;
+        i++;
     }
-    return tpls;
+
+    next_page = (i < tabela->qnt_pags) ? i : -1; //operador ternario... <3
+    return buffer;
 }
 
 // Merge de múltiplos arquivos ordenados
 void merge_runs(const vector<string>& run_files, const string& output_file) {
-    // to - do:
-    // precisamos carregar somente parcialmente essas runs na memória
-    // isso pode ser feito com uns ifs ( duh ) 
-    vector<ifstream> inputs(run_files.size()); //stream dos inpupts 
-    vector<string> heads(run_files.size()); //os números quue estamos analisando agora de cada input
-    vector<bool> active(run_files.size(), true); //quais inputs ainda tem que ser lidos
 
-    // Abrir cada arquivo e ler a primeira linha
+    vector<ifstream> inputs(run_files.size());
+    vector<string> heads(run_files.size());
+    vector<bool> active(run_files.size(), true);
+
     for (size_t i = 0; i < run_files.size(); ++i) {
         inputs[i].open(run_files[i]);
         if (!getline(inputs[i], heads[i])) {
@@ -84,67 +90,78 @@ void merge_runs(const vector<string>& run_files, const string& output_file) {
     }
 
     ofstream out(output_file);
-    // enquanto eu encontrar uma stream ativa, eu repito!
-    // o any_of é basicamente uma scan do vetor que retorna true se pelo menos um bool for verdadeiro
+    vector<string> output_buffer;
+    int total_tuplas_escritas = 0;
+
     while(any_of(active.begin(), active.end(), [](bool a) { return a; })) {
-        int min_val = INT64_MAX; //isso aqui era pra por um int max qualquer. É só a variavel temp para comparação
+        int min_val = INT64_MAX;
         size_t min_idx = -1;
-    
-        // Acha o menor valor numérico da primeira coluna nas streams ativas
+
         for (size_t i = 0; i < heads.size(); ++i) {
             if (active[i]) {
-                int chave = stoi(heads[i].substr(0, heads[i].find(','))); //achar o primeiro valor
+                int chave = stoi(heads[i].substr(0, heads[i].find(',')));
                 if (min_idx == -1 || chave < min_val) {
                     min_val = chave;
                     min_idx = i;
                 }
             }
         }
-    
+
         if (min_idx == -1) break;
-    
-        out << heads[min_idx] << "\n";
-    
+
+        output_buffer.push_back(heads[min_idx]);
+
+        if (output_buffer.size() == MAX_TUPLA) {
+            for (const auto& linha : output_buffer) {
+                out << linha << "\n";
+                total_tuplas_escritas++;
+
+            }
+            output_buffer.clear();
+        }
+
         if (!getline(inputs[min_idx], heads[min_idx])) {
             active[min_idx] = false;
         }
     }
 
+    // Escreve o restante
+    for (const auto& linha : output_buffer) {
+        out << linha << "\n";
+        total_tuplas_escritas++;
+    }
+
     for (auto& in : inputs) in.close();
     out.close();
+    int paginas_escritas = (total_tuplas_escritas + TUPLAS_PAG - 1) / TUPLAS_PAG;
+    page_writes += paginas_escritas;
 }
 
 // Algoritmo de ordenação externa
-void external_merge_sort(string& input_file, string& output_file) {
-    ifstream in(input_file);
+void external_merge_sort(Tabela* tabela, string& output_file) { 
+    int run_id = 0;
+    int next_page = 0;
     vector<string> run_files;
     int run_id = 0;
-    // ordena as runs!
-    // Isso ainda não está funcionando,
-    // precisamos ir lendo a entrada de 2 páginas em duas páginas e ordenando 2 a 2
-    // o que essa parte faz é só ler as primeiras 20 tuplas de um arquivo de entrada 
-    // No caso, temos que passar a tabela e ir percorrendo de duas em duas páginas
-    while (!in.eof()) {
-        vector<string> buffer = read_Tuplas(in, B/2 * TUPLAS_PAG); // le um bloco do tamanho da pag*tuplas por pag.
-        // Podemos manter quatro páginas em memória, ou seja, podemos ler 4*10 tuplas.
-        // No entanto, quando formos juntar blocos de páginas, temos que juntar dois a dois! 
-        // Logo, temos que usar b/2 nessa pate.
+    while (next_page != -1) {
+        vector<Tupla> buffer = read_buffer(tabela, next_page, next_page);
+
         if (buffer.empty()) break;
+
         sort_run(buffer, run_id);
-        //depois de darmos sort na run, tacamos no txt e botamos esse txt no vetor de run_files. 
         run_files.push_back("run_" + to_string(run_id) + ".txt");
-        ++run_id;
+        run_id++;
     }
-    in.close();
     // ordena conjunto de runs!
     while (run_files.size() > 1) {
         vector<string> next_run_files;
-        for (size_t i = 0; i < run_files.size(); i += (B/2)) {
-            //fazemos um grupo de tam B/2, ou seja, merge de 2 páginas com 2 páginas, totalizando quatro,
-            // ou, caso não tenha tudo isso de runs, fazemos um grupo com o que tem
-            vector<string> group(run_files.begin() + i,
-                                 run_files.begin() + min(i + B/2 -1, run_files.size()));
-            string out_run = "run_tmp_" + to_string(i / (B - 1)) + ".txt";
+        for (size_t i = 0; i < run_files.size(); i += 3) {
+            //ordenamos de 3 em 3 e mantemos uma página de OUT
+            vector<string> group;
+            for (size_t j = i; j < i + 3 && j < run_files.size(); j++) {
+                group.push_back(run_files[j]);
+            }
+            string out_run = "run_tmp_" + to_string(i / 3) + ".txt";
             merge_runs(group, out_run); ///ordenamos as páginas e as escrevemos no out run.
             next_run_files.push_back(out_run); 
         }
@@ -162,6 +179,5 @@ void external_merge_sort(string& input_file, string& output_file) {
         Faremos isso até a run ter tamanho do numero de elementos. 
         */
     }
-
-    fs::rename(run_files[0], output_file);
+    if (!run_files.empty()) fs::rename(run_files[0], output_file); //Restará só uma run no vetor de runs.. que é o vetor todo! 
 }
