@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 
@@ -20,6 +21,21 @@ Pagina& Tabela::getPagina(int indice) {
 }
 int Tabela::getQuantidadePaginas() {
     return qnt_pags;
+}
+
+int Tabela::getColunaIndice(string nome){
+    nome.erase(remove(nome.begin(), nome.end(), ' '), nome.end());
+    nome.erase(remove(nome.begin(), nome.end(), '\r'), nome.end());
+
+    for (int i = 0; i < this->header.size(); ++i) {
+        string h = this->header[i];
+        h.erase(remove(h.begin(), h.end(), ' '), h.end());
+        h.erase(remove(h.begin(), h.end(), '\r'), h.end());
+        if (h == nome) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 void Tabela::carregarDados(){

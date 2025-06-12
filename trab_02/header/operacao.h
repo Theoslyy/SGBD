@@ -1,11 +1,20 @@
 #ifndef OPERACAO_H
 #define OPERACAO_H
 
-#include "tabela.h"
+#include "tabela.h" 
 #include <string>
 #include <vector>
 
 class Operacao {
+public:
+    Operacao(Tabela& t1, Tabela& t2, const std::string& c1, const std::string& c2);
+
+    void executarExtenalMerge();
+    void salvarResultado(const std::string& nome_arquivo);
+    long long numPagsGeradas() const;
+    long long numIOsExecutados() const;
+    long long numTuplasGeradas() const;
+
 private:
     Tabela& tabela1;
     Tabela& tabela2;
@@ -20,17 +29,9 @@ private:
     
     Tabela tabela_resultado;
 
-    std::string prepararArquivoParaOrdenacao(Tabela& tabela, int join_col_idx, const std::string& sufixo);
-
-public:
-    Operacao(Tabela& t1, Tabela& t2, const std::string& c1, const std::string& c2);
-
-    void executar();
-    void salvarResultado(const std::string& nome_arquivo);
-
-    long long numPagsGeradas() const;
-    long long numIOsExecutados() const;
-    long long numTuplasGeradas() const;
+    std::vector<Tupla> lerBlocoParaMemoria(Tabela& tabela, int& indicePaginaAtual);
+    void ordenarEGravarRun(std::vector<Tupla>& buffer, int idRun, int join_col_idx, const std::string& prefixo);
+    std::vector<std::string> criarRunsOrdenadas(Tabela& tabela, int join_col_idx);
 };
 
 #endif // OPERACAO_H
