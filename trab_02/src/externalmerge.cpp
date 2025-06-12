@@ -147,6 +147,17 @@ void merge_runs(const vector<string>& run_files, int coluna, const string& outpu
     page_writes += total_pags_escritas;
 }
 
+//funcao auxiliar para contar quantas tuplas tem numa run e descobrir com quantas paginas estamos lidando
+//na prática, isso era para contar, tambem, como I/Os
+//e, daí, estariamos lendo, na verdade, o dobro de páginas
+int contar_tuplas(const string& filename) {
+    ifstream in(filename);
+    int count = 0;
+    string linha;
+    while (getline(in, linha)) count++;
+    return count;
+}
+
 // Algoritmo de ordenação externa
 pair<int,int> external_merge_sort(Tabela* tabela, int coluna, string& output_file) { 
     int run_id = 0;
@@ -173,7 +184,7 @@ pair<int,int> external_merge_sort(Tabela* tabela, int coluna, string& output_fil
             vector<string> group;
             lidas = 0;
             for (size_t j = i; j < i + 3 && j < run_files.size(); j++) {
-                lidas += (run_files[j].size()+ 9)/10; //qtd de paginas nessa run
+                lidas += (contar_tuplas(run_files[j]) + 9)/10; //qtd de paginas nessa run
                 group.push_back(run_files[j]);
             }
             string out_run = "run_tmp_" + to_string(i / 3) + ".txt";
