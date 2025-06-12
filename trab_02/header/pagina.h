@@ -16,5 +16,6 @@ class Pagina {
         void setTupla(int posicao, Tupla tupla);
         bool isFull();
         void addTupla(Tupla tupla);
+        void clear();
 };
 #endif

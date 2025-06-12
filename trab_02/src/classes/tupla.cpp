@@ -5,6 +5,7 @@ using namespace std;
 Tupla::Tupla(): qnt_cols(0){}
 Tupla::Tupla(int qnt_cols) : qnt_cols(qnt_cols) {linha.resize(qnt_cols);}
 Tupla::Tupla(vector<string> linha, int qnt_cols) : linha(linha), qnt_cols(qnt_cols) {}
+Tupla::Tupla(vector<string> linha): linha(linha), qnt_cols(linha.size()) {}
 
 void Tupla::setLinha(vector<string> linha){
     this->linha = linha;

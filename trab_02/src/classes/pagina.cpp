@@ -34,3 +34,7 @@ void Pagina::addTupla(Tupla tupla) {
 bool Pagina::isFull() {
     return qnt_tuplas_ocupadas >= tuplas.size();
 }
+
+void Pagina::clear(){
+    qnt_tuplas_ocupadas = 0;
+}
