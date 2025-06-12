@@ -12,7 +12,7 @@ void Tabela::adicionarPagina(Pagina& pagina) {
     paginas[qnt_pags] = pagina;
     qnt_pags++;
 }
-Pagina Tabela::getPagina(int indice) {
+Pagina& Tabela::getPagina(int indice) {
     if (indice >= 0 && indice < qnt_pags) {
         return paginas[indice];
     }

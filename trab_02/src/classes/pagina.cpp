@@ -7,7 +7,7 @@ Pagina::Pagina(){
     this->qnt_tuplas_ocupadas = 0;
 }
 
-Tupla Pagina::getTupla(int posicao) {
+Tupla& Pagina::getTupla(int posicao) {
     if (posicao >= 0 && posicao < qnt_tuplas_ocupadas) {
         return tuplas[posicao];
     } else {
