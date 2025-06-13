@@ -4,7 +4,7 @@
 #include <string>
 #include <tuple>
 
-void external_merge_sort(const std::string& input_file, int coluna, const std::string& output_file);
+pair<int,int> external_merge_sort(Tabela* tabela, int coluna, string& output_file);
 tuple<int, int, int> sort_merge_join (Tabela* tabela1, Tabela* tabela2, int coluna_join_t1, int coluna_join_t2, const string& output_file);
 
 #endif // EXTERNALMERGE_H
