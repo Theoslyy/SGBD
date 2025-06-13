@@ -81,7 +81,7 @@ void Tabela::carregarDados(){
         paginas.push_back(pagina_atual);
         num_operacoes_IO++;
     }
-    
+    this->qnt_pags = this->paginas.size();
     file.close();
     cout << "Tabela " << nome_tabela << " carregada. " << paginas.size() << " paginas." << endl;
 }

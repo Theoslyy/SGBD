@@ -160,7 +160,6 @@ int contar_tuplas(const string& filename) {
 
 // Algoritmo de ordenação externa
 pair<int,int> external_merge_sort(Tabela* tabela, int coluna, string& output_file) { 
-    int run_id = 0;
     int next_page = 0;
     page_reads = 0;
     page_writes = 0;
@@ -177,7 +176,10 @@ pair<int,int> external_merge_sort(Tabela* tabela, int coluna, string& output_fil
     }
     // ordena conjunto de runs!
     int lidas;
+
+    int contador_rodadas = 0;
     while (run_files.size() > 1) {
+        contador_rodadas++;
         vector<string> next_run_files;
         for (size_t i = 0; i < run_files.size(); i += 3) {
             //ordenamos de 3 em 3 e mantemos uma página de OUT
@@ -187,7 +189,7 @@ pair<int,int> external_merge_sort(Tabela* tabela, int coluna, string& output_fil
                 lidas += (contar_tuplas(run_files[j]) + 9)/10; //qtd de paginas nessa run
                 group.push_back(run_files[j]);
             }
-            string out_run = "run_tmp_" + to_string(i / 3) + ".txt";
+            string out_run = "run_tmp_" + to_string(contador_rodadas) + "_" + to_string(i / 3) + ".txt";
             merge_runs(group, coluna, out_run); ///ordenamos as páginas e as escrevemos no out run.
             page_reads += lidas; 
             next_run_files.push_back(out_run); 
@@ -209,4 +211,106 @@ pair<int,int> external_merge_sort(Tabela* tabela, int coluna, string& output_fil
     if (!run_files.empty()) fs::rename(run_files[0], output_file); //Restará só uma run no vetor de runs.. que é o vetor todo! 
     return make_pair(page_reads, page_writes);
 
+}
+int comparar_criar_tuplas_ordenadas(const string& arquivo1, const string& arquivo2, int coluna1, int coluna2, const string& output_file, int& join_reads, int& join_writes) {
+    ifstream in1(arquivo1);
+    ifstream in2(arquivo2);
+    ofstream out(output_file);
+
+    // Linha de leitura em cada arq
+    string linha1, linha2;
+    int tuplas_geradas = 0;
+    int lines_read1 = 0, lines_read2 = 0;
+    vector<string> output_buffer;
+
+    // static_cast<bool>() porque tava dando erro de conversão implícita
+    bool has_line1 = static_cast<bool>(getline(in1, linha1));
+    if (has_line1) lines_read1++;
+    bool has_line2 = static_cast<bool>(getline(in2, linha2));
+    if (has_line2) lines_read2++;
+
+    while (has_line1 && has_line2) {
+        vector<string> cols1 = split_csv(linha1);
+        vector<string> cols2 = split_csv(linha2);
+        // conversão para comparar as chaves
+        int key1 = stoi(cols1[coluna1]);
+        int key2 = stoi(cols2[coluna2]);
+
+        if (key1 < key2) {
+            //linha 1 é descartada e lida a próxima linha do arquivo 1
+            has_line1 = static_cast<bool>(getline(in1, linha1));
+            if (has_line1) lines_read1++;
+        } else if (key2 < key1) {
+            //linha 2 é descartada e lida a próxima linha do arquivo 2
+            has_line2 = static_cast<bool>(getline(in2, linha2));
+            if (has_line2) lines_read2++;
+        } else {
+
+            int current_key = key1;
+            vector<string> block1, block2;
+
+            // Lê blocos de linhas com a mesma chave
+            while (has_line1 && stoi(split_csv(linha1)[coluna1]) == current_key) {
+                block1.push_back(linha1);
+                has_line1 = static_cast<bool>(getline(in1, linha1));
+                if (has_line1) lines_read1++;
+            }
+            // Lê blocos de linhas com a mesma chave do segundo arq
+            while (has_line2 && stoi(split_csv(linha2)[coluna2]) == current_key) {
+                block2.push_back(linha2);
+                has_line2 = static_cast<bool>(getline(in2, linha2));
+                if (has_line2) lines_read2++;
+            }
+
+            // Cruzamento dos blocos, vai iterar sobre linha do bloco 1 combinando com linha do bloco 2
+            for (const auto& r1 : block1) {
+                for (const auto& r2 : block2) {
+                    output_buffer.push_back(r1 + "," + r2);
+                    tuplas_geradas++;
+                    if (output_buffer.size() == TUPLAS_PAG) {
+                        for (const auto& line : output_buffer) out << line << "\n";
+                        output_buffer.clear();
+                        join_writes++;
+                    }
+                }
+            }
+        }
+    }
+    // Escreve o restante do buffer
+    if (!output_buffer.empty()) {
+        for (const auto& line : output_buffer) out << line << "\n";
+        join_writes++;
+    }
+
+    in1.close();
+    in2.close();
+    out.close();
+
+    join_reads = ((lines_read1 + TUPLAS_PAG - 1) / TUPLAS_PAG) + ((lines_read2 + TUPLAS_PAG - 1) / TUPLAS_PAG);
+
+    return tuplas_geradas;
+}
+
+tuple<int, int, int> sort_merge_join(Tabela* tabela1, Tabela* tabela2, int coluna_join_t1, int coluna_join_t2, const string& output_file) {
+    string sorted_file1 = "sorted_temp_t1.txt";
+    string sorted_file2 = "sorted_temp_t2.txt";
+
+    pair<int, int> output_primeiro_ems = external_merge_sort(tabela1, coluna_join_t1, sorted_file1);
+
+    pair<int, int> output_segundo_ems = external_merge_sort(tabela2, coluna_join_t2, sorted_file2);
+
+    // contadores para I/O da junção
+    int join_reads = 0, join_writes = 0;
+    int tuplas_geradas = comparar_criar_tuplas_ordenadas(sorted_file1, sorted_file2, coluna_join_t1, coluna_join_t2, output_file, join_reads, join_writes);
+
+    fs::remove(sorted_file1);
+    fs::remove(sorted_file2);
+
+    int total_reads = output_primeiro_ems.first + output_segundo_ems.first + join_reads;
+    int total_writes = output_primeiro_ems.second + output_segundo_ems.second + join_writes;
+
+    cout << "\nOperação Sort-Merge Join finalizada." << endl;
+    cout << "CUSTO TOTAL I/O: " << total_reads << " leituras, " << total_writes << " escritas." << endl;
+
+    return make_tuple(total_reads, total_writes, tuplas_geradas);
 }

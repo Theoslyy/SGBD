@@ -1,104 +1,51 @@
 #include <iostream>
-#include <fstream>  
-#include <sstream> 
-#include <vector>
 #include <string>
-
-#include "../header/tupla.h"
-#include "../header/pagina.h"
+#include <vector>
+#include <tuple>
 #include "../header/tabela.h"
+#include "../header/externalmerge.h"
 
 using namespace std;
 
-// Main gerada por IA para testar as classes, Revisar/ Alterar
-
-void exibirTupla(const Tupla& t) {
-    vector<string> linha = t.linha; 
-    for (size_t i = 0; i < linha.size(); ++i) {
-        cout << linha[i] << (i == linha.size() - 1 ? "" : " | ");
-    }
-    cout << endl;
-}
-
-void exibirPagina(const Pagina& p) {
-    cout << "  --- Pagina (Tuplas Ocupadas: " << p.qnt_tuplas_ocupadas << "/10) ---" << endl;
-    for (int i = 0; i < p.qnt_tuplas_ocupadas; ++i) {
-        cout << "    Tupla " << i << ": ";
-        Tupla tempTupla = p.tuplas[i]; 
-        exibirTupla(tempTupla);
-    }
-    cout << "  ---------------------------------------" << endl;
-}
-
-void exibirTabela(const Tabela& tbl) {
-    cout << "=== Tabela: " << tbl.nome_tabela << " ===" << endl;
-    cout << "Colunas: " << tbl.qnt_cols << endl;
-    cout << "Páginas no Buffer: " << tbl.qnt_pags << "/4" << endl;
-    for (int i = 0; i < tbl.qnt_pags; ++i) {
-        cout << " Buffer Pagina " << i << ":" << endl;
-        Pagina tempPagina = tbl.paginas[i]; 
-        exibirPagina(tempPagina);
-    }
-    cout << "==========================" << endl;
-}
-
-// --- Função para Parsear Linha CSV ---
-vector<string> parseCSVLine(const string& linha_csv) {
-    vector<string> atributos;
-    stringstream ss(linha_csv);
-    string atributo;
-    while (getline(ss, atributo, ',')) {
-        atributos.push_back(atributo);
-    }
-    return atributos;
-}
-
 int main() {
-    const int VINHO_QNT_COLS = 5; 
-    Tabela tabela_vinhos("vinhos", VINHO_QNT_COLS);
 
-    ifstream arquivo_csv("vinhos.csv");
-    if (!arquivo_csv.is_open()) {
-        cerr << "Erro ao abrir o arquivo vinhos.csv!" << endl;
+    Tabela tabela_uva("uva_teste.csv", 0);
+    Tabela tabela_vinho("vinho_teste.csv", 0);
+
+    try {
+        cout << "\nCarregando dados da tabela Uva..." << endl;
+        tabela_uva.carregarDados();
+        
+        cout << "Carregando dados da tabela Vinho..." << endl;
+        tabela_vinho.carregarDados();
+    } catch (const runtime_error& e) {
+        cerr << "Erro ao carregar arquivos: " << e.what() << endl;
         return 1;
     }
 
-    string linha_csv;
-    Pagina pagina_atual; 
+    // Exemplo: Uva ▷◁(uva_id = uva_id) Vinho
+    string coluna_join_uva = "uva_id";
+    string coluna_join_vinho = "uva_id";
+    string arquivo_saida = "resultado_join_uva_vinho.csv";
 
-    cout << "Carregando dados de vinhos.csv..." << endl;
+    int indice_uva = tabela_uva.getColunaIndice(coluna_join_uva);
+    int indice_vinho = tabela_vinho.getColunaIndice(coluna_join_vinho);
 
-    while (getline(arquivo_csv, linha_csv)) {
-        if (linha_csv.empty()) continue; 
-
-        vector<string> atributos = parseCSVLine(linha_csv);
-
-        if (static_cast<int>(atributos.size()) == VINHO_QNT_COLS) {
-            Tupla nova_tupla(atributos, VINHO_QNT_COLS);
-            
-            if (pagina_atual.isFull()) {
-                if (tabela_vinhos.getQuantidadePaginas() < 4) {
-                    tabela_vinhos.adicionarPagina(pagina_atual);
-                } else {
-                    cout << "Buffer da tabela 'vinhos' está cheio (4 páginas). Mais dados do CSV não serão carregados neste buffer." << endl;
-                    break;
-                }
-                pagina_atual = Pagina(); 
-            }
-            pagina_atual.addTupla(nova_tupla);
-        } else {
-            cerr << "Aviso: Linha com quantidade de colunas inesperada ignorada: " << linha_csv << endl;
-        }
+    if (indice_uva == -1 || indice_vinho == -1) {
+        cerr << "Erro: Uma das colunas de junção não foi encontrada no cabeçalho dos arquivos." << endl;
+        return 1;
     }
 
-    if (pagina_atual.qnt_tuplas_ocupadas > 0 && tabela_vinhos.getQuantidadePaginas() < 4) {
-        tabela_vinhos.adicionarPagina(pagina_atual);
-    }
+    tuple<int, int, int> resultados = sort_merge_join(&tabela_uva, &tabela_vinho, indice_uva, indice_vinho, arquivo_saida);
 
-    arquivo_csv.close();
-    cout << "Dados carregados." << endl << endl;
-
-    exibirTabela(tabela_vinhos);
+    cout << "\n==============================================" << endl;
+    cout << "      RESULTADOS FINAIS DA OPERAÇÃO" << endl;
+    cout << "==============================================" << endl;
+    cout << "(1) Quantidade de IO's (páginas lidas): " << get<0>(resultados) << endl;
+    cout << "(2) Quantidade de páginas gravadas em disco: " << get<1>(resultados) << endl;
+    cout << "(3) Quantidade de tuplas geradas na junção: " << get<2>(resultados) << endl;
+    cout << "As tuplas resultantes foram salvas em: '" << arquivo_saida << "'" << endl;
+    cout << "==============================================" << endl;
 
     return 0;
 }
