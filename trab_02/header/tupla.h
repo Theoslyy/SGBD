@@ -11,7 +11,8 @@ class Tupla{
         int qnt_cols;
         Tupla();
         Tupla(int qnt_cols);
-        Tupla( vector<string> linha, int qnt_cols);
+        Tupla(vector<string> linha, int qnt_cols);
+        Tupla(vector<string> linha);
 
         void setLinha(vector<string> linhas);
         void setColuna(int posicao, string valor);

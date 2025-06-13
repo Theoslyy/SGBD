@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -std=c++11 -Wall -Wextra -pedantic -Iheader -g
+CXXFLAGS := -std=c++17 -Wall -Wextra -pedantic -Iheader -g
 LDFLAGS := 
 EXEC := executavel
 
