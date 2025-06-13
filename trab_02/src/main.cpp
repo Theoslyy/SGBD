@@ -4,48 +4,30 @@
 #include <tuple>
 #include "../header/tabela.h"
 #include "../header/externalmerge.h"
+#include "../header/operador.h"
 
 using namespace std;
 
 int main() {
+    Tabela vinho("vinho.csv",0);
+    Tabela uva("uva.csv",0);
+    Tabela pais("pais.csv",0);
 
-    Tabela tabela_uva("uva_teste.csv", 0);
-    Tabela tabela_vinho("vinho_teste.csv", 0);
+    vinho.carregarDados();
+    uva.carregarDados();
+    pais.carregarDados();
 
-    try {
-        cout << "\nCarregando dados da tabela Uva..." << endl;
-        tabela_uva.carregarDados();
-        
-        cout << "Carregando dados da tabela Vinho..." << endl;
-        tabela_vinho.carregarDados();
-    } catch (const runtime_error& e) {
-        cerr << "Erro ao carregar arquivos: " << e.what() << endl;
-        return 1;
-    }
+    Operador op {vinho, uva, "uva_id", "uva_id"};
+    //Operador op {vinho, uva, "uva_id", "uva_id"};
+    //Operador op {uva, pais, "pais_origem_id", "pais_id"};
 
-    // Exemplo: Uva ▷◁(uva_id = uva_id) Vinho
-    string coluna_join_uva = "uva_id";
-    string coluna_join_vinho = "uva_id";
-    string arquivo_saida = "resultado_join_uva_vinho.csv";
+    op.executar();
 
-    int indice_uva = tabela_uva.getColunaIndice(coluna_join_uva);
-    int indice_vinho = tabela_vinho.getColunaIndice(coluna_join_vinho);
+    cout << "#Pags: " << op.numPagsGeradas(); 
+    cout << "\n#IOss: " << op.numIOExecutados();
+    cout << "\n#Tups: " << op.numTuplasGeradas();
 
-    if (indice_uva == -1 || indice_vinho == -1) {
-        cerr << "Erro: Uma das colunas de junção não foi encontrada no cabeçalho dos arquivos." << endl;
-        return 1;
-    }
-
-    tuple<int, int, int> resultados = sort_merge_join(&tabela_uva, &tabela_vinho, indice_uva, indice_vinho, arquivo_saida);
-
-    cout << "\n==============================================" << endl;
-    cout << "      RESULTADOS FINAIS DA OPERAÇÃO" << endl;
-    cout << "==============================================" << endl;
-    cout << "(1) Quantidade de IO's (páginas lidas): " << get<0>(resultados) << endl;
-    cout << "(2) Quantidade de páginas gravadas em disco: " << get<1>(resultados) << endl;
-    cout << "(3) Quantidade de tuplas geradas na junção: " << get<2>(resultados) << endl;
-    cout << "As tuplas resultantes foram salvas em: '" << arquivo_saida << "'" << endl;
-    cout << "==============================================" << endl;
+    op.salvarTuplasGeradas("resultado.csv");
 
     return 0;
 }
