@@ -1,0 +1,32 @@
+Se TS(T) < WTS(O) há uma gravação “mais nova” já feita; leitura fora de ordem, então, damos rollback.	
+Se não, podemos ler, daí, RTS(O) recebe o maior timestamp de leitor já visto, isso preserva a informação para futuras escritas.
+
+escrita:
+Dois testes de conflito:
+TS(T) < RTS(O), há leitura mais nova.
+TS(T) < WTS(O), há gravação mais nova. 
+Qualquer um gera rollback.
+pseudocodigo
+para cada operação s:
+    op <- parse_op(s)
+    tr <- T[op.trans]
+
+    se tr inativa -> pula
+    se op é commit -> pula
+    ts ← obj[dado]
+
+    SE op == leitura
+        conflito? (TS < WTS) -> rollback
+        senão → atualiza RTS, loga Read
+
+    SE op == escrita
+        conflito? (TS < RTS ou TS < WTS) -> rollback
+        senão → atualiza WTS, loga Write
+
+    ++momento
+fim
+
+se chegar aqui → escreva "<id>-OK" e grave RTS/WTS finais de cada objeto
+RTS --> readtimestamp
+WTS --> writetimestamp 
+cada objeto tem um tempo associado 
