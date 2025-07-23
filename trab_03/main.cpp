@@ -73,7 +73,10 @@ void executa(const string& id, const vector<string>& ops,
         Transacao& tr = T[op.trans]; 
         //se a transacao esta inativa (rollback) ou e de commit, passamos  
         if (!tr.ativa) { ++momento; continue; }
-        if (op.tipo=="c") { ++momento; continue; }
+        if (op.tipo == "c") { 
+            tr.ativa = false;
+            ++momento; 
+            continue; }
         //se nao, pegamos o estado do objeto 
         TS& ts = obj[op.dado];
 
@@ -91,6 +94,7 @@ void executa(const string& id, const vector<string>& ops,
         } 
         if (op.tipo == "w") {
             if (tr.ts < ts.r || tr.ts < ts.w) {
+                cout << id << " " << op.dado; 
                 out << id << "-ROLLBACK-" << momento << "\n";
                 return;
             }
@@ -141,7 +145,7 @@ int main() {
     map<string,int> ts_init;
     for (size_t i=0;i<trans.size();++i) ts_init[trans[i]] = stoi(ts_str[i]);
 
-    //por fim, as ilnhas restantes sao os escalonamentos (schedules no livro)
+    //por fim, as linhas restantes sao os escalonamentos (schedules no livro)
     while (getline(in, linha)) {
         linha = trim(linha);
         if (linha.empty()) continue;
