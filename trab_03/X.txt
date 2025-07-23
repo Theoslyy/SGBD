@@ -1,4 +1,0 @@
-E_1, Read, 0
-E_2, Write, 0
-E_3, Read, 0
-X, 3, -1
